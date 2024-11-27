@@ -101,6 +101,7 @@ def build(onnx_file, engine_file, precision, calib_data, calib_cache, calib_batc
   logger = trt.Logger(trt.Logger.INFO)
   builder = trt.Builder(logger)
   config = builder.create_builder_config()
+  config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
   config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, workspace << 30) # set max workspace (GB)
   # Modern TensorRT recommend using EXPLICIT_BATCH, which means the batch size is retrieved from the ONNX input
   # If the ONNX model was generated using ultralytics, batch size = 1 by defaul

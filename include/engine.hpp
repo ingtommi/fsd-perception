@@ -55,7 +55,7 @@ struct Object {
 class YOLO {
   public:
     /**
-     * @brief Constructs a YOLO object from model path.
+     * @brief Constructs a YOLO object from config file path.
      * 
      * @param configPath Path to the config file specifying model to use and inference options.
      */
