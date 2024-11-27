@@ -133,10 +133,10 @@ def build(onnx_file, engine_file, precision, calib_data, calib_cache, calib_batc
     if not builder.platform_has_fast_int8:
       log.warning(f"INT8 is not supported natively on this device")
     else:
+      config.set_flag(trt.BuilderFlag.INT8)
       if builder.platform_has_fast_fp16:
         # Also enable FP16, as some layers may be even more efficient in FP16 than INT8
         config.set_flag(trt.BuilderFlag.FP16)
-      config.set_flag(trt.BuilderFlag.INT8)
     # Set INT8 calibrator
     config.int8_calibrator = EntropyCalibrator(calib_cache)
     if not os.path.exists(calib_cache):

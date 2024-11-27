@@ -195,14 +195,15 @@ cv::cuda::GpuMat YOLO::preProcess(const cv::Mat& frame) {
   }
   
   // Convert BGR->RGB and NHWC->NCHW
-  cv::cuda::GpuMat nchwFrame(1, this->pixels * 3, CV_32FC1); // CV_32FC1 --> single-channel
-  // Create vector of single-channel images
+  // 1: Allocate nchwFrame (output) as a flat, single-channel buffer that can store all three channels (pixels * 3)
+  cv::cuda::GpuMat nchwFrame(1, this->pixels * 3, CV_32FC1);
+  // 2: Create separate GpuMat objects for each channel that map to specific regions within nchwFrame
   vector<cv::cuda::GpuMat> channels{
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr() + 2 * pixels), // R channel
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr() + pixels),     // G channel
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr())               // B channel
   };
-  // Split gpuModFrame into separate channels and copy them into the vector, which points to specific regions of nchwFrame
+  // 3: Split gpuModFrame (input) into separate channels and copy them into the vector
   // When cv::cuda::split writes data into channels, it indirectly writes into the corresponding regions of nchwFrame
   cv::cuda::split(gpuModFrame, channels, this->cvStream);
 
