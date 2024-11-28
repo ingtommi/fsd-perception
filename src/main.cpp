@@ -6,7 +6,7 @@ using namespace std;
 
 int main() {
 
-  const string configPath = "../config-yolo.yaml";
+  const string configPath = "../config/yolo.yaml";
   const string videoPath = "../media/video.mp4";
   cv::VideoCapture cap;
   cv::VideoWriter writer;

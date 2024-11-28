@@ -14,7 +14,7 @@ Calculate **mean** and **standard deviation** for each channel (B,G,R) of the da
 
 By default this pipeline uses **IMAGENET** values because this is what is done in [ultralytics/yolov5](https://github.com/ultralytics/yolov5/blob/master/utils/augmentations.py#L58). Currently, [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics/blob/main/ultralytics/data/augment.py) (YOLOv8 and YOLOv11) and [yolov10/ultralytics](https://github.com/THU-MIG/yolov10/blob/main/ultralytics/data/augment.py) do not apply this normalization step.
 
-*NOTE: Set `normalize:True` in `../config-yolo.yaml` to enable Z-Score Normalization.*
+*NOTE: Set `normalize:True` in `../config/yolo.yaml` to enable Z-Score Normalization.*
 
 ### *process_log.py*
 

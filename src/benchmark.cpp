@@ -7,7 +7,7 @@ using namespace std;
 
 int main() {
 
-  const string configPath = "../config-yolo.yaml";
+  const string configPath = "../config/yolo.yaml";
   const string imagePath = "../media/image.jpg";
 
   try {
