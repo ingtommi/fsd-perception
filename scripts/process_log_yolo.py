@@ -38,6 +38,6 @@ def process_log(filePath, numIts):
     print("Post-processing: Mean = {:.2f} ms, Std = {:.2f} ms".format(post_mean, post_dev))
 
 # Usage
-filePath = "../build/log.txt"
+filePath = "../build/log_yolo.txt"
 numIts = 200  # Warm-up iterations
 process_log(filePath, numIts)

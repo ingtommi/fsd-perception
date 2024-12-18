@@ -1,5 +1,8 @@
 # Calculate mean and stddev values of custom dataset to apply Z-Score Normalization.
 
+# FSOCO-split: - Mean (BGR): [0.495, 0.511, 0.475]
+#              - StdDev (BGR): [0.200, 0.192, 0.193]
+
 import cv2
 import numpy as np
 import os

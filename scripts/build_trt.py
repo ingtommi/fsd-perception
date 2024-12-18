@@ -124,19 +124,27 @@ def build(onnx_file, engine_file, precision, calib_data, calib_cache, calib_batc
     log.info(f"Model {output.name} shape: {output.shape} {output.dtype}") 
   
   # Set precision
+  fp16 = builder.platform_has_fast_fp16
+  int8 = builder.platform_has_fast_int8
+  # FP16
   if precision == "fp16":
-    if not builder.platform_has_fast_fp16:
+    if not fp16:
       log.warning(f"FP16 is not supported natively on this device")  
     else:
       config.set_flag(trt.BuilderFlag.FP16)
+  # INT8
   elif precision == "int8":
-    if not builder.platform_has_fast_int8:
-      log.warning(f"INT8 is not supported natively on this device")
+    if not int8:
+      log.warning(f"INT8 is not supported natively on this device. Trying to use FP16...")
+      # Try FP16
+      if not fp16:
+        log.warning(f"FP16 is not supported natively on this device") 
     else:
       config.set_flag(trt.BuilderFlag.INT8)
-      if builder.platform_has_fast_fp16:
-        # Also enable FP16, as some layers may be even more efficient in FP16 than INT8
+      # Also enable FP16, as some layers may be even more efficient in FP16 than INT8
+      if fp16:
         config.set_flag(trt.BuilderFlag.FP16)
+        
     # Set INT8 calibrator
     config.int8_calibrator = EntropyCalibrator(calib_cache)
     if not os.path.exists(calib_cache):

@@ -6,23 +6,31 @@ Possible optimizations: 1. Use a separate stream for pre-processing and pipeline
 
 #include "engine.hpp"
 #include "timing.hpp"
+
 #include <stdexcept>
 #include <numeric>
 #include <algorithm>
 #include <yaml-cpp/yaml.h>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/dnn/dnn.hpp>
 #include <opencv2/core/cuda_stream_accessor.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
-#include <opencv2/imgcodecs.hpp>
 
 using namespace std;
 
 static const cv::Scalar PAD_COLOR = {114, 114, 114};  // Padding color (constant gray)
 static constexpr float NORM_FACTOR = 1.f / 255.f;     // Normalization factor
 
-// Helper function to calculate tensor size from tensor shape
+/**
+ * @brief Gets the byte size of a tensor from its shape.
+ * 
+ * @param dims Structure that defines the dimensions of the tensor.
+ * @return Byte size of the tensor.
+ */
 size_t getByteSizeByDim(const nvinfer1::Dims& dims) noexcept {
+  
   size_t size = 1;
   for (int i = 0; i < dims.nbDims; i++) {
     size *= dims.d[i];
@@ -32,9 +40,21 @@ size_t getByteSizeByDim(const nvinfer1::Dims& dims) noexcept {
 
 // Constructor
 YOLO::YOLO(const string& configPath) {
+  
   // Parse config file
   if (!setOptions(configPath))
-    throw runtime_error("Failed to parse config options from: " + configPath);
+    throw runtime_error("Failed to load inference options from: " + configPath);
+
+  // Show information
+  spdlog::info("----- INFERENCE OPTIONS -----");
+  spdlog::info("Model type: {} [0 = YOLOv5, 1 = YOLOv8/11, 2 = YOLOv10]", this->modelType);
+  spdlog::info("Conf threshold: {}", this->confThres);
+  spdlog::info("IoU threshold: {}", this->iouThres);
+  spdlog::info("Max detections: {}", this->maxDet);
+  spdlog::info("Num classes: {}", this->numClasses);
+  spdlog::info("-----------------------------");
+  spdlog::info("");
+
   // Open model file in binary mode
   ifstream modelFile(this->modelPath, ios::binary);
   if (!modelFile)
@@ -96,11 +116,11 @@ YOLO::~YOLO() {
 }
 
 // Getter
-vector<Object> YOLO::getDetections() noexcept {
+const vector<YOLO::Object>& YOLO::getDetections() noexcept {
   return this->detections;
 }
 
-// Config parser
+// Load inference options
 bool YOLO::setOptions(const string& configPath) noexcept {
   try {
     // Load file
@@ -155,6 +175,7 @@ bool YOLO::setOptions(const string& configPath) noexcept {
 
 // Pre-processing
 cv::cuda::GpuMat YOLO::preProcess(const cv::Mat& frame) {
+  
   // Define the OpenCV CUDA stream by wrapping the existing CUDA stream
   this->cvStream = cv::cuda::StreamAccessor::wrapStream(this->stream);
   
@@ -195,15 +216,14 @@ cv::cuda::GpuMat YOLO::preProcess(const cv::Mat& frame) {
   }
   
   // Convert BGR->RGB and NHWC->NCHW
-  // 1: Allocate nchwFrame (output) as a flat, single-channel buffer that can store all three channels (pixels * 3)
-  cv::cuda::GpuMat nchwFrame(1, this->pixels * 3, CV_32FC1);
-  // 2: Create separate GpuMat objects for each channel that map to specific regions within nchwFrame
+  cv::cuda::GpuMat nchwFrame(1, this->pixels * 3, CV_32FC1); // CV_32FC1 --> single-channel
+  // Create vector of single-channel images
   vector<cv::cuda::GpuMat> channels{
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr() + 2 * pixels), // R channel
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr() + pixels),     // G channel
     cv::cuda::GpuMat(this->inputDims.d[2], this->inputDims.d[3], CV_32FC1, (float*)nchwFrame.ptr())               // B channel
   };
-  // 3: Split gpuModFrame (input) into separate channels and copy them into the vector
+  // Split gpuModFrame into separate channels and copy them into the vector, which points to specific regions of nchwFrame
   // When cv::cuda::split writes data into channels, it indirectly writes into the corresponding regions of nchwFrame
   cv::cuda::split(gpuModFrame, channels, this->cvStream);
 
@@ -212,6 +232,7 @@ cv::cuda::GpuMat YOLO::preProcess(const cv::Mat& frame) {
 
 // Post-processing
 void YOLO::postProcess(cv::Mat& features) {
+  
   // Select appropriate method
   switch (this->modelType) {
     // YOLOv5: "output0" = [1, 25200, (5 + numClasses)]
@@ -230,6 +251,7 @@ void YOLO::postProcess(cv::Mat& features) {
 }
 
 void YOLO::postProcessV5(cv::Mat& features) {
+  
   vector<cv::Rect> boxes;
   vector<float> scores;
   vector<int> labels;
@@ -263,14 +285,14 @@ void YOLO::postProcessV5(cv::Mat& features) {
         float w = *rowPtr++;
         float h = *rowPtr;
         // Convert coordinates
-        int left = static_cast<int>(((x - 0.5 * w) - this->pad_left) * this->scale);
-        int top = static_cast<int>(((y - 0.5 * h) - this->pad_top) * this->scale);
-        int width = static_cast<int>(w * this->scale);
-        int height = static_cast<int>(h * this->scale);
+        float left = ((x - 0.5 * w) - this->pad_left) * this->scale;
+        float top = ((y - 0.5 * h) - this->pad_top) * this->scale;
+        float width = w * this->scale;
+        float height = h * this->scale;
         // Store
-        boxes.push_back(cv::Rect(left, top, width, height));
-        scores.push_back(score);
-        labels.push_back(label);
+        boxes.emplace_back(left, top, width, height);
+        scores.emplace_back(score);
+        labels.emplace_back(label);
       }
     }
   }
@@ -279,11 +301,12 @@ void YOLO::postProcessV5(cv::Mat& features) {
   cv::dnn::NMSBoxes(boxes, scores, this->confThres, this->iouThres, indices, 1.f, this->maxDet);
   // Collect final detections
   for (int id : indices) {
-    this->detections.emplace_back(Object(boxes[id], labels[id], scores[id]));
+    this->detections.emplace_back(boxes[id], labels[id], scores[id]);
   }
 }
 
 void YOLO::postProcessV8(cv::Mat& features) {
+  
   vector<cv::Rect> boxes;
   vector<float> scores;
   vector<int> labels;
@@ -318,14 +341,14 @@ void YOLO::postProcessV8(cv::Mat& features) {
       float w = *rowPtr++;
       float h = *rowPtr;
       // Convert coordinates
-      int left = static_cast<int>(((x - 0.5 * w) - this->pad_left) * this->scale);
-      int top = static_cast<int>(((y - 0.5 * h) - this->pad_top) * this->scale);
-      int width = static_cast<int>(w * this->scale);
-      int height = static_cast<int>(h * this->scale);
+      float left = ((x - 0.5 * w) - this->pad_left) * this->scale;
+      float top = ((y - 0.5 * h) - this->pad_top) * this->scale;
+      float width = w * this->scale;
+      float height = h * this->scale;
       // Store
-      boxes.push_back(cv::Rect(left, top, width, height));
-      scores.push_back(score);
-      labels.push_back(label);
+      boxes.emplace_back(left, top, width, height);
+      scores.emplace_back(score);
+      labels.emplace_back(label);
     }
   }
   // Keep top maxDet detections (NMS)
@@ -333,11 +356,12 @@ void YOLO::postProcessV8(cv::Mat& features) {
   cv::dnn::NMSBoxes(boxes, scores, this->confThres, this->iouThres, indices, 1.f, this->maxDet);
   // Collect final detections
   for (int id : indices) {
-    this->detections.emplace_back(Object(boxes[id], labels[id], scores[id]));
+    this->detections.emplace_back(boxes[id], labels[id], scores[id]);
   }
 }
 
 void YOLO::postProcessV10(cv::Mat& features) {
+  
   vector<cv::Rect> boxes;
   vector<float> scores;
   vector<int> labels;
@@ -364,14 +388,14 @@ void YOLO::postProcessV10(cv::Mat& features) {
       float x2 = *rowPtr++;
       float y2 = *rowPtr;
       // Convert coordinates
-      int left = static_cast<int>((x1 - this->pad_left) * this->scale);
-      int top = static_cast<int>((y1 - this->pad_top) * this->scale);
-      int width = static_cast<int>((x2 - x1) * this->scale);
-      int height = static_cast<int>((y2 - y1) * this->scale);
+      float left = (x1 - this->pad_left) * this->scale;
+      float top = (y1 - this->pad_top) * this->scale;
+      float width = (x2 - x1) * this->scale;
+      float height = (y2 - y1) * this->scale;
       // Store
-      boxes.push_back(cv::Rect(left, top, width, height));
-      scores.push_back(score);
-      labels.push_back(label);
+      boxes.emplace_back(left, top, width, height);
+      scores.emplace_back(score);
+      labels.emplace_back(label);
     }
   }
   // Keep top maxDet detections (no NMS)
@@ -387,11 +411,11 @@ void YOLO::postProcessV10(cv::Mat& features) {
     indices.resize(this->maxDet);
     // Collect final detections
     for (int id : indices)
-      this->detections.emplace_back(Object(boxes[id], labels[id], scores[id]));
+      this->detections.emplace_back(boxes[id], labels[id], scores[id]);
   }
   else {
     for (size_t i = 0; i < labels.size(); ++i)
-      this->detections.emplace_back(Object(boxes[i], labels[i], scores[i]));
+      this->detections.emplace_back(boxes[i], labels[i], scores[i]);
   }
 }
 
@@ -400,12 +424,12 @@ void YOLO::postProcessV10(cv::Mat& features) {
 bool YOLO::infer(cv::Mat& frame) {
 
   // Declare timing variables
-  INIT_TIMER
+  INIT_TIMER_YOLO
 
   // Pre-process input frame
   START_TIMER
   cv::cuda::GpuMat gpuFrame = preProcess(frame);
-  END_TIMER("preprocess")
+  END_TIMER_YOLO("preprocess")
 
   START_TIMER
   // Copy input to buffer[0]
@@ -440,38 +464,54 @@ bool YOLO::infer(cv::Mat& frame) {
 
   // Synchronize stream to ensure all operations are complete
   cudaStreamSynchronize(this->stream);
-  END_TIMER("inference")
+  END_TIMER_YOLO("inference")
 
   // Post-process output results
   START_TIMER
   this->detections.clear();
   postProcess(features);
-  END_TIMER("postprocess")
+  END_TIMER_YOLO("postprocess")
 
   // Log timing results
-  LOG_TIMER
+  LOG_TIMER_YOLO
 
   return true;
 }
 
-// Drawing
-void YOLO::drawBbox(cv::Mat& frame, const vector<Object>& detections) {
-  // For each detection
-  for (const auto& detection : detections) {
-    // Draw bounding box
-    switch (detection.label) {
-      case 0: // yellow cone
-        cv::rectangle(frame, detection.bbox, cv::Scalar(0, 255, 255), 2);
-        break;
-      case 1: // blue cone
-        cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-        break;
-      case 2: // Orange cone
-        cv::rectangle(frame, detection.bbox,  cv::Scalar(0, 165, 255), 2);
-        break;
-      default: // Large orange (and unknown) cone
-        cv::rectangle(frame, detection.bbox, cv::Scalar(0, 0, 255), 2);
-        break;
-    }
-  }
+/*
+// TODO: Decide wheter to move coordinate conversion out of postProcess() or not
+// Probably useless since when estimating distance conversion is always needed
+
+// std::array<float, 4> instead of cv::Rect bbox in the struct
+// xywh2rect(detection.bbox) [or xyxy2rect(...)] instead of detection.bbox in drawBbox()
+
+// Convert xywh coordinates (YOLOv5/8/11) to the format expected by cv::Rect
+cv::Rect YOLO::xywh2rect(const array<float, 4>& bbox) {
+  x = bbox[0];
+  y = bbox[1];
+  w = bbox[2];
+  h = bbox[3];
+
+  float left = ((x - 0.5 * w) - this->pad_left) * this->scale;
+  float top = (((y - 0.5 * h) - this->pad_top) * this->scale;
+  float width = w * this->scale;
+  float height = h * this->scale;
+
+  return cv::Rect(left, top, width, height);
 }
+
+// Convert xyxy coordinates (YOLOv10) to the format expected by cv::Rect
+cv::Rect YOLO::xyxy2rect(const array<float, 4>& bbox) {
+  x1 = bbox[0];
+  y1 = bbox[1];
+  x2 = bbox[2];
+  y2 = bbox[3];
+
+  float left = (x1 - this->pad_left) * this->scale;
+  float top = (y1 - this->pad_top) * this->scale;
+  float width = (x2 - x1) * this->scale;
+  float height = (y2 - y1) * this->scale;
+
+  return cv::Rect(left, top, width, height);
+}
+*/

@@ -1,9 +1,7 @@
-# Configuration file for YOLO inference
-
 # Fixed options: image_size = 640, batch_size = 1
 
 # Inference options
-model_path: /path/to/engine
+model_path: /home/jetson/inference/models/yolo5n-int8.engine
 model_type: YOLOv5                                           # [YOLOv5, YOLOv8, YOLOv10, YOLOv11]
 conf_thres: 0.5                                              # [0.001 - 1]
 iou_thres: 0.7                                               # [0.001 - 1]
@@ -19,4 +17,4 @@ classes: # just for clarity, changing mapping does not make any effect
   1: blue
   2: orange
   3: large_orange
-  4: unknown
+  4: unknown # TODO: removed it

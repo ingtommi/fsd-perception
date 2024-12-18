@@ -1,70 +1,102 @@
 #include "engine.hpp"
-#include <spdlog/spdlog.h>
+#include "depth.hpp"
+#include "camera.hpp"
+
+#include <stdexcept>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/videoio.hpp>
 
 using namespace std;
 
+/**
+ * @brief Draws bounding boxes.
+ * 
+ * @param frame Frame where to draw bounding boxes.
+ * @param detections Vector of detected objects.
+ */
+/*
+void drawBBox(cv::Mat& frame, const vector<Object>& detections) noexcept {
+  // For each detection
+  for (const auto& detection : detections) {
+    // Draw bounding box
+    switch (detection.label) {
+      case 0: // yellow cone
+        cv::rectangle(frame, detection.bbox, cv::Scalar(0, 255, 255), 2);
+        break;
+      case 1: // blue cone
+        cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+        break;
+      case 2: // Orange cone
+        cv::rectangle(frame, detection.bbox,  cv::Scalar(0, 165, 255), 2);
+        break;
+      default: // Large orange (and unknown) cone
+        cv::rectangle(frame, detection.bbox, cv::Scalar(0, 0, 255), 2);
+        break;
+    }
+  }
+} 
+*/
+
 int main() {
 
-  const string configPath = "../config/yolo.yaml";
-  const string videoPath = "../media/video.mp4";
-  cv::VideoCapture cap;
-  cv::VideoWriter writer;
+  const string configCamCalib = "../config/calibration.yaml";
+  const string configCamSetup = "../config/camera.yaml";
+  const string configTask = "../config/task.yaml";
+  const string configYOLO = "../config/yolo.yaml";
 
   try {
-    // Construct YOLO object
-    YOLO yolo(configPath); // throws exceptions
-    spdlog::info("YOLO object succesfully created.");
+    // CONSTRUCT OBJECTS
+    Camera camera(configCamCalib, configCamSetup);
 
-    // Open input video
-    cap.open(videoPath); // for camera, pass id instead of path
-    if (!cap.isOpened())
-      throw runtime_error("Failed to open video from file: " + videoPath); 
-    // Get video properties
-    int w = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
-    int h = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-    int fps = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
-    // Define writer object for saving output video
-    writer.open("output.mp4", 
-                cv::VideoWriter::fourcc('m','p','4','v'), 
-                fps, 
-                cv::Size(w, h));
-    if (!writer.isOpened())
-      throw runtime_error("Failed to open video writer."); 
-    // Create frame object
-    cv::Mat frame;
+    const auto& oldMtx = camera.getOldMtx();
+    const auto& dist = camera.getDist();
+    const auto& newMtx = camera.getNewMtx();
+    // Extract focal length and principal point (multipy by pxSize to convert px to mm)
+    const double& fx = newMtx.at<double>(0, 0);
+    const double& fy = newMtx.at<double>(1, 1);
+    const double& cx = newMtx.at<double>(0, 2);
+    const double& cy = newMtx.at<double>(1, 2);
 
-    spdlog::info("Starting inference...");
-    while (true) {
+    YOLO yolo(configYOLO);
+
+    Estimator estimator(fx, fy, cx, cy, configTask);
+
+    // RUN ALGORITHM
+    cv::Mat frame, undisFrame;
+    // Start recording
+    if (!camera.start())
+      throw runtime_error("Failed to start recording.");
+    spdlog::info("Started recording...");
+    spdlog::info("");
+
+    while (true) { // TODO: consider stopping the loop
       // Capture frame
-      cap >> frame;
-      // Exit if end of capture
-      if (frame.empty()) break;
+      if (!camera.capture(frame)) {
+        spdlog::warn("Captured failed on current frame. Continuing...");
+        // Continue with next frame
+        continue;
+      }
 
-      // Run inference
-      if (!yolo.infer(frame)) {
+      // Undistort frame
+      cv::undistort(frame, undisFrame, oldMtx, dist, newMtx);
+
+      // Run inference and get detections
+      if (!yolo.infer(undisFrame)) {
         spdlog::warn("Inference failed on current frame. Continuing...");
         // Continue with next frame
         continue;
       }
-      // Draw bounding boxes
-      auto detections = yolo.getDetections();
-      yolo.drawBbox(frame, detections);
-      // Write frame to output video
-      writer.write(frame);
+      const auto& detections = yolo.getDetections();
+
+      // Compute and get position of cones related to camera
+      const auto& positions = estimator.computePosition(detections, undisFrame.cols);
+      spdlog::info("Number of positions: ", positions.size()); // just for test
     }
-    spdlog::info("Inference successfully completed.");
   }
   catch (const exception& e) {
+    // Display error
     spdlog::error(e.what());
-    cap.release();
-    writer.release();
-    
     return 1;
   }
-  // Release resources
-  if (cap.isOpened()) cap.release();
-  if (writer.isOpened()) writer.release();
-
   return 0;
 }

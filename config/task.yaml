@@ -1,0 +1,10 @@
+# Cones geometry, in meters (from FS rules)
+smallConeHeight: 0.325
+largeConeHeight: 0.505
+coneDiameter: 0.285
+
+# Camera position, in meters
+cameraHeight: 1.5
+
+# Maximum accepted distance to consider cone, in meters
+maxDistance: 20

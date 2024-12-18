@@ -8,7 +8,7 @@
 #include <NvInfer.h>
 //#include <NvInferSafeRuntime.h> // Use this for strict safety requirements (i.e. vehicles) [namespace -> nvinfer1::safe]
 #include <cuda_runtime_api.h>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
 
 /**
@@ -33,65 +33,62 @@ class Logger : public nvinfer1::ILogger {
 };
 
 /**
- * @brief Structure to hold detection results.
+ * @brief Object detection class.
  * 
- * This structure holds the bounding box, confidence score, and label of a detection result.
+ * This class performs object detection using YOLO.
  */
-struct Object {
-    cv::Rect bbox; // Bounding box of the detected object.
-    int label;     // label of the detected object.
-    float conf;    // Confidence score of the detection.
-
-    /**
-     * @brief Constructs a DetResult object.
-     * 
-     * @param bbox Bounding box of the detected object.
-     * @param label Label of the detected object.
-     * @param conf Confidence score of the detection.
-     */
-    Object(cv::Rect bbox, int label, float conf) : bbox(bbox), label(label), conf(conf) {}
-};
-
 class YOLO {
   public:
     /**
+     * @brief Structure to hold detection results.
+     * 
+     * This structure holds the bounding box, confidence score, and label of a detection result.
+     */
+    struct Object {
+      const cv::Rect bbox; // Bounding box of the detected object.
+      const int label;     // label of the detected object.
+      const float conf;    // Confidence score of the detection.
+
+      /**
+       * @brief Constructs a DetResult object.
+       * 
+       * @param bbox Bounding box of the detected object.
+       * @param label Label of the detected object.
+       * @param conf Confidence score of the detection.
+       */
+      Object(const cv::Rect& bbox, const int& label, const float& conf) : bbox(bbox), label(label), conf(conf) {}
+    };
+    
+    /**
      * @brief Constructs a YOLO object from config file path.
      * 
-     * @param configPath Path to the config file specifying model to use and inference options.
+     * @param configPath Path to the config file specifying the model to use and inference options.
      */
     YOLO(const std::string& configPath);
 
-    /**
+    /** 
      * @brief Destructs a YOLO object.
      */
     ~YOLO();
     
     /**
-     * @brief Getter for the vector of of detected objects.
+     * @brief Getter for the vector of detected objects.
      * 
-     * @returns Vector of detected objects.
+     * @return Reference to the vector of detected objects.
      */
-    std::vector<Object> getDetections() noexcept;
+    const std::vector<Object>& getDetections() noexcept;
 
     /**
      * @brief Performs inference on a frame.
      * 
-     * @param frame Reference to the frame.
-     * @return True if successfully completed inference, False otherwise.
+     * @param frame Frame on which to perform inference.
+     * @return True if successfull, False otherwise.
      */
     bool infer(cv::Mat& frame);
 
-    /**
-     * @brief Draws bounding boxes on a frame.
-     * 
-     * @param frame Reference to the frame.
-     * @param detections Vector of detected objects.
-     */
-    void drawBbox(cv::Mat& frame, const std::vector<Object>& detections);
-
   private:
     // YOLO options
-    std::string modelPath;                                // Path to YOLO model.
+    std::string modelPath;                               // Path to YOLO model.
     enum ModelType { 
       YOLOv5, 
       YOLOv8, // also includes YOLOv11 
@@ -128,16 +125,17 @@ class YOLO {
     std::vector<void*> buffers;                           // Pointers to GPU memory locations that hold input and output tensors.
     
     /**
-     * @brief Sets inference options from config path.
+     * @brief Loads inference options from config path.
      * 
      * @param configPath Path to the config file.
+     * @return True if successfull, False otherwise.
      */
     bool setOptions(const std::string& configPath) noexcept;
 
     /**
      * @brief Preprocesses an input frame by performing letterboxing and normalization.
      * 
-     * @param frame Reference to the input frame.
+     * @param frame Frame to be pre-processed.
      * @returns A preprocessed version of the input frame as a CUDA GPU matrix.
      */
     cv::cuda::GpuMat preProcess(const cv::Mat& frame);
@@ -145,28 +143,28 @@ class YOLO {
     /**
      * @brief Postprocesses the detection results.
      * 
-     * @param features Reference to the feature matrix.
+     * @param features Feature matrix containing raw detection results.
      */
     void postProcess(cv::Mat& features);
 
     /**
      * @brief Postprocesses the detection results of YOLOv5.
      * 
-     * @param features Reference to the feature matrix.
+     * @param features Feature matrix containing raw detection results.
      */
     void postProcessV5(cv::Mat& features);
     
     /**
      * @brief Postprocesses the detection results of YOLOv8.
      * 
-     * @param features Reference to the feature matrix.
+     * @param features Feature matrix containing raw detection results.
      */
     void postProcessV8(cv::Mat& features);
 
     /**
      * @brief Postprocesses the detection results of YOLOv10.
      * 
-     * @param features Reference to the feature matrix.
+     * @param features Feature matrix containing raw detection results.
      */
     void postProcessV10(cv::Mat& features);
 };
