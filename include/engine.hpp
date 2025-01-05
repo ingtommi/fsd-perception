@@ -82,7 +82,7 @@ class YOLO {
      * @brief Performs inference on a frame.
      * 
      * @param frame Frame on which to perform inference.
-     * @return True if successfull, False otherwise.
+     * @return True if successful, False otherwise.
      */
     bool infer(cv::Mat& frame);
 
@@ -128,7 +128,7 @@ class YOLO {
      * @brief Loads inference options from config path.
      * 
      * @param configPath Path to the config file.
-     * @return True if successfull, False otherwise.
+     * @return True if successful, False otherwise.
      */
     bool setOptions(const std::string& configPath) noexcept;
 

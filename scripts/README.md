@@ -26,7 +26,7 @@ By default logs are written in `../build/log_{}.txt`, so there is no need to mod
 
 ### *calibrate_camera.py*
 
-Calibrates a camera using the **OpenCV** [approach](https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html). The script expects the required images (**~40**) to be at `../media/calib/*.jpg`.
+Calibrates a camera using the **OpenCV** [approach](https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html). The script expects the required images (**~30**) to be at `../media/calib/*`.
 
 *NOTE: Set `IMGSZ` and `CHECKERBOARD` to the correct values before launching the script.*
 
@@ -34,4 +34,4 @@ Calibrates a camera using the **OpenCV** [approach](https://docs.opencv.org/4.x/
 
 Helps **assessing the distortion** by showing both the original and undistorted images. Undistortion is performed using the **OpenCV** `cv::undistort()` method.
 
-By default, this script expects a valid calibration file at `../config/camera.yaml`. 
+By default, this script expects a valid calibration file at `../config/cameraCalib.yaml`. 

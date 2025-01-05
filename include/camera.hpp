@@ -23,15 +23,14 @@ class Camera {
     /**
      * @brief Starts recording by activating the camera's live video mode.
      * 
-     * @return True if successfull, False otherwise.
      */
-    bool start() noexcept;
+    void start();
     
     /**
      * @brief Retrieves the latest frame from image memory.
      * 
      * @param frame OpenCV Mat where to store the capture. 
-     * @return True if successfull, False otherwise.
+     * @return True if successful, False otherwise.
      */
     bool capture(cv::Mat& frame) noexcept;
     
@@ -68,22 +67,20 @@ class Camera {
     cv::Mat dist;         // Matrix containing camera distortion parameters.
 
     // Setup parameters
-    bool set_autoExp;     // flag to enable auto-exposure
-    bool set_aoi;         // flag to enable custom AOI
-    int aoi_x;            // x-coordinate of AOI in px.
-    int aoi_w;            // width of the AOI in px.
-    int aoi_y;            // y-coordinate of AOI in px.
-    int aoi_h;            // height of the AOI in px.
-    bool set_gain;        // flag to enable custom sensor gain.
+    bool auto_exp;        // auto-exposure on/off
     int gain;             // percentage of the maximum gain.
-    bool set_fps;         // flag to enable custom fps value.
+    int aoi_x;            // x-coordinate of AOI in px.
+    int aoi_y;            // y-coordinate of AOI in px.
+    int aoi_w;            // width of the AOI in px.
+    int aoi_h;            // height of the AOI in px.
     double fps;           // fps value to be used.
+    double actual_fps;    // fps value actually set
 
     /**
      * @brief Loads camera intrinsic parameters from calibration file.
      * 
      * @param configPath Path to the file containing camera calibration paramaters.
-     * @return True if successfull, False otherwise. 
+     * @return True if successful, False otherwise. 
      */
     bool loadCalib(const std::string& configPath) noexcept;
 
@@ -91,7 +88,7 @@ class Camera {
      * @brief Loads sensor setup parameters from setup file.
      * 
      * @param configPath Path to the file containing camera setup paramaters.
-     * @return True if successfull, False otherwise. 
+     * @return True if successful, False otherwise. 
      */
     bool loadSetup(const std::string& configPath) noexcept;
 };

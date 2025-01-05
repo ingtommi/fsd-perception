@@ -2,12 +2,11 @@ import cv2
 import numpy as np
 import glob
 
-# Define image size, lens, checkerboard dimensions (i.e., number of corners), termination criteria and output path
+# Define image size, checkerboard dimensions (i.e. number of corners) and termination and criteria
 IMGSZ = (1920, 1200)
-LENS = "6mm"
+OUTPUT = "./camera_6mm.yaml"
 CHECKERBOARD = (6,9)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-OUTPUT = "../config/cameraCalib_{}.yaml".format(LENS)
 
 # Create arrays to store object points and image points from all the images
 objpoints = [] # 3d point in real world space
@@ -17,7 +16,7 @@ imgpoints = [] # 2d points in image plane.
 objp = np.zeros((1, CHECKERBOARD[0]*CHECKERBOARD[1], 3), np.float32) # (batch, points, coordinates)
 objp[0,:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2) # (0,0,0), (1,0,0), ... | z fixed to 0
 
-images = glob.glob("../media/calib/{}/*.png".format(LENS))
+images = glob.glob('./6mm/*.png')
 for fname in images:
   img = cv2.imread(fname)
   gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

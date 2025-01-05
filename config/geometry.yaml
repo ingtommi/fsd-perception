@@ -7,4 +7,4 @@ coneDiameter: 0.285
 cameraHeight: 1.5
 
 # Maximum accepted distance to consider cone, in meters
-maxDistance: 20
+maxDistance: 15

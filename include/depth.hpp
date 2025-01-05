@@ -86,7 +86,7 @@ class Estimator {
      * @brief Loads object geometry from config path.
      * 
      * @param configPath Path to the file containing object geometry data.
-     * @return True if successfull, False otherwise.
+     * @return True if successful, False otherwise.
      */
     bool setGeometry(const std::string& configPath) noexcept;
 };

@@ -1,0 +1,12 @@
+# IDS uEye camera settings
+
+auto_exp: true
+
+gain: 50 # %
+
+aoi_x: 0     # (1920-640)/2 = 640
+aoi_y: 0     # 1200-640 = 560
+aoi_w: 1920  # 640
+aoi_h: 1200  # 640
+
+fps: 20.0

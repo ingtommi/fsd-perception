@@ -1,3 +1,5 @@
+// IDS error codes at: https://www.1stvision.com/cameras/IDS/IDS-manuals/uEye_Manual/sdk_fehlermeldungen.html
+
 #include "camera.hpp"
 
 #include <spdlog/spdlog.h>
@@ -9,67 +11,65 @@ Camera::Camera(const string& cameraCalib, const string& cameraSetup) {
 
   // Loads calibration
   if (!loadCalib(cameraCalib))
-    throw runtime_error("Failed to load calibration data from: " + cameraCalib);
+    throw runtime_error("Failed to load camera calibration data from: " + cameraCalib);
   // Load setup
   if (!loadSetup(cameraSetup))
-    throw runtime_error("Failed to load setup data from: " + cameraSetup);
+    throw runtime_error("Failed to load camera setup data from: " + cameraSetup);
 
   int nRet;
   // Initialization
   nRet = is_InitCamera(&this->hCam, NULL);
   if (nRet != IS_SUCCESS)
-    throw runtime_error("Camera initialization failed with code: " + to_string(nRet));
+    throw runtime_error("Failed to initialize camera. Error code: " + to_string(nRet));
+
   // Set BGR color mode to match OpenCV
-  is_SetColorMode(this->hCam, IS_CM_BGR8_PACKED);
+  nRet = is_SetColorMode(this->hCam, IS_CM_BGR8_PACKED);
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to set camera color mode. Error code: " + to_string(nRet));
+
   // Enable auto exposure
-  double enable = (this->set_autoExp == true) ? 1 : 0; // 1 to enable, 0 to disable
-  is_SetAutoParameter(this->hCam, IS_SET_ENABLE_AUTO_SHUTTER, &enable, 0);
+  double enable = this->auto_exp ? 1 : 0; // 1 to enable, 0 to disable
+  nRet = is_SetAutoParameter(this->hCam, IS_SET_ENABLE_AUTO_SHUTTER, &enable, 0);
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to set camera auto exposure. Error code: " + to_string(nRet));
+
   // Set master gain
-  if (this->set_gain) {
-    nRet = is_SetHardwareGain(this->hCam, this->gain, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
-    if (nRet != IS_SUCCESS)
-      throw runtime_error("Sensor gain setup failed with code: " + to_string(nRet));
-  }
+  nRet = is_SetHardwareGain(this->hCam, this->gain, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to set camera gain. Error code: " + to_string(nRet));
+
   // Set AOI
-  if (this->set_aoi) {
-    IS_RECT rectAOI;
-    rectAOI.s32X = this->aoi_x;
-    rectAOI.s32Y = this->aoi_y;
-    rectAOI.s32Width = this->aoi_w;
-    rectAOI.s32Height = this->aoi_h;
-    nRet = is_AOI(this->hCam, IS_AOI_IMAGE_SET_AOI, (void*)&rectAOI, sizeof(rectAOI));
-    if (nRet != IS_SUCCESS)
-      throw runtime_error("AOI setup failed with code: " + to_string(nRet));
-  }
+  IS_RECT rectAOI;
+  rectAOI.s32X = this->aoi_x;
+  rectAOI.s32Y = this->aoi_y;
+  rectAOI.s32Width = this->aoi_w;
+  rectAOI.s32Height = this->aoi_h;
+  nRet = is_AOI(this->hCam, IS_AOI_IMAGE_SET_AOI, (void*)&rectAOI, sizeof(rectAOI));
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to set camera AOI. Error code: " + to_string(nRet));
+
   // Set frame rate
-  double newFps = 0; // actual fps value
-  if (this->set_fps) {
-    nRet = is_SetFrameRate(this->hCam, this->fps, &newFps);
-    if (nRet != IS_SUCCESS)
-      throw runtime_error("FPS setup failed with code: " + to_string(nRet));
-  }
+  nRet = is_SetFrameRate(this->hCam, this->fps, &this->actual_fps);
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to set camera FPS. Error code: " + to_string(nRet));
+
   // Allocate and activate image memory
   nRet = is_AllocImageMem(this->hCam, this->aoi_w, this->aoi_h, 24, &this->pMem, &this->memId);
-  if (nRet != IS_SUCCESS) {
-    throw runtime_error("Image memory allocation failed with code: " + to_string(nRet));
-  }
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to allocate image memory. Error code: " + to_string(nRet));
   nRet = is_SetImageMem(this->hCam, this->pMem, this->memId);
-  if (nRet != IS_SUCCESS) {
-    throw runtime_error("Image memory activation failed with code: " + to_string(nRet));
-  }
+  if (nRet != IS_SUCCESS)
+    throw runtime_error("Failed to activate image memory. Error code: " + to_string(nRet));
 
   // Show information
-  IS_RECT currAOI;
-  is_AOI(this->hCam, IS_AOI_IMAGE_GET_AOI, (void*)&currAOI, sizeof(currAOI));
-  int gain = is_SetHardwareGain(this->hCam, IS_GET_MASTER_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
   spdlog::info("----- CAMERA OPTIONS -----");
-  spdlog::info("Auto exposure: {}", this->set_autoExp);
-  spdlog::info("Gain: {}%", gain);
-  spdlog::info("AOI x: {}", currAOI.s32X);
-  spdlog::info("AOI y: {}", currAOI.s32Y);
-  spdlog::info("AOI width: {}", currAOI.s32Width);
-  spdlog::info("AOI height: {}", currAOI.s32Height);
-  spdlog::info("FPS: {:.3f} [0 = not set]", newFps);
+  spdlog::info("Auto exposure: {}", this->auto_exp);
+  spdlog::info("Gain: {}%", this->gain);
+  spdlog::info("AOI x: {}", this->aoi_x);
+  spdlog::info("AOI y: {}", this->aoi_y);
+  spdlog::info("AOI width: {}", this->aoi_w);
+  spdlog::info("AOI height: {}", this->aoi_h);
+  spdlog::info("FPS: {:.2f}", this->actual_fps);
   spdlog::info("--------------------------");
   spdlog::info("");
 }
@@ -81,11 +81,10 @@ Camera::~Camera() {
 }
 
 // Starter
-bool Camera::start() noexcept {
+void Camera::start() {
   int nRet = is_CaptureVideo(this->hCam, IS_DONT_WAIT); // non-blocking
   if (nRet != IS_SUCCESS)
-    return false;
-  return true;
+    throw runtime_error("Failed to start recording. Error code: " + to_string(nRet));
 }
 
 // Capturer
@@ -131,36 +130,23 @@ bool Camera::loadSetup(const string& configPath) noexcept {
   try {
     // Load file
     YAML::Node config = YAML::LoadFile(configPath);
-    // Exposure
-    if (!config["set_autoExp"]) return false;
-    this->set_aoi = config["set_autoExp"].as<bool>(false);    
-    // AOI
-    if (!config["set_aoi"]) return false;
-    this->set_aoi = config["set_aoi"].as<bool>(false);
-    if(this->set_aoi) {
-      if (!config["aoi_x"] || !config["aoi_y"] || !config["aoi_w"] || !config["aoi_h"]) return false;
-      this->aoi_x = config["aoi_x"].as<int>(0);
-      this->aoi_y = config["aoi_y"].as<int>(0);
-      this->aoi_w = config["aoi_w"].as<int>(1920);
-      this->aoi_h = config["aoi_h"].as<int>(1200);
-    }
+    // Auto exposure
+    if (!config["auto_exp"]) return false;
+    this->auto_exp = config["auto_exp"].as<bool>(true);    
     // Gain
-    if (!config["set_gain"]) return false;
-    this->set_gain = config["set_aoi"].as<bool>(false);
-    if (this->set_gain) {
-      if (!config["gain"]) return false;
-      this->gain = config["gain"].as<int>(50);
-    }
+    if (!config["gain"]) return false;
+    this->gain = config["gain"].as<int>(50);
+    // AOI
+    if (!config["aoi_x"] || !config["aoi_y"] || !config["aoi_w"] || !config["aoi_h"]) return false;
+    this->aoi_x = config["aoi_x"].as<int>(0);
+    this->aoi_y = config["aoi_y"].as<int>(0);
+    this->aoi_w = config["aoi_w"].as<int>(1920);
+    this->aoi_h = config["aoi_h"].as<int>(1200);
     // Frame rate
-    if (!config["set_fps"]) return false;
-    this->set_fps = config["set_aoi"].as<bool>(false);
-    if (this->set_fps) {
-      if (!config["fps"]) return false;
-      this->fps = config["fps"].as<double>(25.f);
-    }
-
-    } catch (const exception& e) {
-      return false;
-    }
+    if (!config["fps"]) return false;
+    this->fps = config["fps"].as<double>(20.f);
+  } catch (const exception& e) {
+    return false;
+  }
   return true;
 }
