@@ -40,10 +40,10 @@ Camera::Camera(const string& cameraCalib, const string& cameraSetup) {
 
   // Set AOI
   IS_RECT rectAOI;
-  rectAOI.s32X = this->aoi_x;
-  rectAOI.s32Y = this->aoi_y;
-  rectAOI.s32Width = this->aoi_w;
-  rectAOI.s32Height = this->aoi_h;
+  rectAOI.s32X = this->aoi.x;
+  rectAOI.s32Y = this->aoi.y;
+  rectAOI.s32Width = this->aoi.w;
+  rectAOI.s32Height = this->aoi.h;
   nRet = is_AOI(this->hCam, IS_AOI_IMAGE_SET_AOI, (void*)&rectAOI, sizeof(rectAOI));
   if (nRet != IS_SUCCESS)
     throw runtime_error("Failed to set camera AOI. Error code: " + to_string(nRet));
@@ -54,7 +54,7 @@ Camera::Camera(const string& cameraCalib, const string& cameraSetup) {
     throw runtime_error("Failed to set camera FPS. Error code: " + to_string(nRet));
 
   // Allocate and activate image memory
-  nRet = is_AllocImageMem(this->hCam, this->aoi_w, this->aoi_h, 24, &this->pMem, &this->memId);
+  nRet = is_AllocImageMem(this->hCam, this->aoi.w, this->aoi.h, 24, &this->pMem, &this->memId);
   if (nRet != IS_SUCCESS)
     throw runtime_error("Failed to allocate image memory. Error code: " + to_string(nRet));
   nRet = is_SetImageMem(this->hCam, this->pMem, this->memId);
@@ -65,10 +65,10 @@ Camera::Camera(const string& cameraCalib, const string& cameraSetup) {
   spdlog::info("----- CAMERA OPTIONS -----");
   spdlog::info("Auto exposure: {}", this->auto_exp);
   spdlog::info("Gain: {}%", this->gain);
-  spdlog::info("AOI x: {}", this->aoi_x);
-  spdlog::info("AOI y: {}", this->aoi_y);
-  spdlog::info("AOI width: {}", this->aoi_w);
-  spdlog::info("AOI height: {}", this->aoi_h);
+  spdlog::info("AOI x: {}", this->aoi.x);
+  spdlog::info("AOI y: {}", this->aoi.y);
+  spdlog::info("AOI width: {}", this->aoi.w);
+  spdlog::info("AOI height: {}", this->aoi.h);
   spdlog::info("FPS: {:.2f}", this->actual_fps);
   spdlog::info("--------------------------");
   spdlog::info("");
@@ -98,26 +98,24 @@ bool Camera::capture(cv::Mat& frame) noexcept {
   }
 
   // Convert the image to an OpenCV Mat object
-  frame = cv::Mat(this->aoi_h, this->aoi_w, CV_8UC3, pMem_b);
+  frame = cv::Mat(this->aoi.h, this->aoi.w, CV_8UC3, pMem_b);
   
   return true;
 }
 
 // Getters
-const cv::Mat& Camera::getOldMtx() noexcept { return this->oldMtx; }
+const Camera::Calib& Camera::getCalib() noexcept { return this->calib; }
 
-const cv::Mat& Camera::getDist() noexcept { return this->dist; }
-
-const cv::Mat& Camera::getNewMtx() noexcept { return this->newMtx; }
+const Camera::AOI& Camera::getAOI() noexcept { return this->aoi; }
 
 // Calibration loader
 bool Camera::loadCalib(const string& configPath) noexcept {
   try {
     cv::FileStorage fs(configPath, cv::FileStorage::READ);
     // Load matrices
-    fs["oldMtx"] >> this->oldMtx;
-    fs["newMtx"] >> this->newMtx;
-    fs["dist"] >> this->dist;
+    fs["oldMtx"] >> this->calib.oldMtx;
+    fs["newMtx"] >> this->calib.newMtx;
+    fs["dist"] >> this->calib.dist;
 
   } catch (const exception& e) {
     return false;
@@ -138,10 +136,10 @@ bool Camera::loadSetup(const string& configPath) noexcept {
     this->gain = config["gain"].as<int>(50);
     // AOI
     if (!config["aoi_x"] || !config["aoi_y"] || !config["aoi_w"] || !config["aoi_h"]) return false;
-    this->aoi_x = config["aoi_x"].as<int>(0);
-    this->aoi_y = config["aoi_y"].as<int>(0);
-    this->aoi_w = config["aoi_w"].as<int>(1920);
-    this->aoi_h = config["aoi_h"].as<int>(1200);
+    this->aoi.x = config["aoi_x"].as<int>(0);
+    this->aoi.y = config["aoi_y"].as<int>(0);
+    this->aoi.w = config["aoi_w"].as<int>(1920);
+    this->aoi.h = config["aoi_h"].as<int>(1200);
     // Frame rate
     if (!config["fps"]) return false;
     this->fps = config["fps"].as<double>(20.f);

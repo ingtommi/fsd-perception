@@ -1,17 +1,16 @@
-// NOTE:  Latency introduced by camera capture are not yet considered.
-
 #include "engine.hpp"
 #include "depth.hpp"
 
 #include <chrono>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 
 using namespace std;
 
 /*
-void drawBBox(cv::Mat& frame, const vector<Object>& detections) noexcept {
+void drawBBox(cv::Mat& frame, const vector<YOLO::Object>& detections) noexcept {
   // For each detection
   for (const auto& detection : detections) {
     // Draw bounding box
@@ -41,26 +40,30 @@ void loadCalib(const string& path, cv::Mat& oldMtx, cv::Mat& dist, cv::Mat& newM
   fs["dist"] >> dist;
 }
 
-void runLoop(YOLO& yolo, Estimator& estimator, cv::Mat& img, cv::Mat& undisImg, cv::Mat& oldMtx, cv::Mat& newMtx, cv::Mat& dist, size_t numIts) {
+void runLoop(YOLO& yolo, Estimator& estimator, cv::Mat& img, cv::Mat& undisImg, cv::Mat& map1, cv::Mat& map2, size_t numIts) {
   for (size_t i = 0; i < numIts; ++i) {
-    cv::undistort(img, undisImg, oldMtx, dist, newMtx);
+    // undistortion
+    cv::remap(img, undisImg, map1, map2, cv::INTER_LINEAR); // not included in detailed benchmarking, but costly
+    // inference
     if(!yolo.infer(undisImg)) {
       spdlog::warn("Inference failed on run #{}. Continuing...", i);
       continue;
     }
     const auto& detections = yolo.getDetections(); // not included in detailed benchmarking
-    estimator.computePosition(detections, img.cols);
+    // depth estimation
+    estimator.computePosition(detections);
   }
 }
 
 int main() {
 
   const string configCalib = "../config/cameraCalib.yaml";
-  const string configYOLO = "../config/yolo.yaml";
-  const string configGeom = "../config/geometry.yaml";
-  const string imagePath = "../media/image.jpg"; // use an image acquired by calibrated camera!
-  cv::Mat img;// undisImg;
+  const string configYOLO = "../config/configYOLO.yaml";
+  const string configGeom = "../config/configGeom.yaml";
+  const string imagePath = "../media/6mm.png";
+  cv::Mat img, undisImg;
   cv::Mat oldMtx, dist, newMtx;
+  cv::Mat map1, map2;
 
   try {
     img = cv::imread(imagePath);
@@ -74,19 +77,22 @@ int main() {
     const double cx = newMtx.at<double>(0, 2);
     const double cy = newMtx.at<double>(1, 2);
 
+    // Compute undistortion maps
+    cv::initUndistortRectifyMap(oldMtx, dist, cv::Mat(), newMtx, img.size(), CV_32FC1, map1, map2);
+
     // Construct objects
     YOLO yolo(configYOLO);
     Estimator estimator(fx, fy, cx, cy, configGeom);
     
     // Warm-up
     spdlog::info("Warming-up the network...");
-    runLoop(yolo, estimator, img, undisImg, oldMtx, newMtx, dist, 200); // run for 200 iterations
+    runLoop(yolo, estimator, img, undisImg, map1, map2, 200); // run for 200 iterations
     
     // Benchmark
     spdlog::info("Warm-up done. Benchmarking the network...");
     auto start = chrono::high_resolution_clock::now();
 
-    runLoop(yolo, estimator, img, undisImg, oldMtx, newMtx, dist, 2000); // run for 2000 iterations
+    runLoop(yolo, estimator, img, undisImg, map1, map2, 2000); // run for 2000 iterations
     
     auto end = chrono::high_resolution_clock::now();
     auto duration = chrono::duration<double, milli>(end - start).count();

@@ -7,6 +7,25 @@
 
 class Camera {
   public:
+        /**
+     * @brief Struct to hold camera calibration matrices.
+     */
+    struct Calib {
+      cv::Mat oldMtx; // Matrix containing camera intrinsic parameters.
+      cv::Mat newMtx; // Matrix containing refined camera intrinsic parameters.
+      cv::Mat dist;   // Matrix containing camera distortion parameters.
+    };
+
+    /**
+     * @brief Struct to hold AOI definition.
+     */
+    struct AOI {
+      int w; // width in px.
+      int h; // height in px.
+      int x; // x-coordinate in px.
+      int y; // y-coordinate in px.
+    };
+
     /**
      * @brief Construct a Camera object from camera calibration and setup parameters.
      * 
@@ -35,46 +54,32 @@ class Camera {
     bool capture(cv::Mat& frame) noexcept;
     
     /**
-     * @brief Get the camera intrinsic matrix.
+     * @brief Get the camera calibration matrices.
      * 
-     * @return Reference to the matrix.
+     * @return Reference to the struct.
      */
-    const cv::Mat& getOldMtx() noexcept;
+    const Calib& getCalib() noexcept;
 
     /**
-     * @brief Get the camera distortion matrix.
+     * @brief Get the AOI.
      * 
-     * @return Reference to the matrix.
+     * @return Reference to the struct.
      */
-    const cv::Mat& getDist() noexcept;
-
-    /**
-     * @brief Get the refined camera intrinsic matrix.
-     * 
-     * @return Reference to the matrix.
-     */
-    const cv::Mat& getNewMtx() noexcept;
+    const AOI& getAOI() noexcept;
 
   private:
-
-    HIDS hCam = 0;        // camera handle set to 0 to take first camera available
-    char* pMem = nullptr; // pointer to the memory to be allocated
-    int memId = 0;        // id of this memory
+    Calib calib;          // struct containing calibration matrices.
+    AOI aoi;              // struct containing AOI definition.
   
-    // Calibration parameters
-    cv::Mat oldMtx;       // Matrix containing camera intrinsic parameters.
-    cv::Mat newMtx;       // Matrix containing refined camera intrinsic parameters.
-    cv::Mat dist;         // Matrix containing camera distortion parameters.
+    HIDS hCam = 0;        // camera handle set to 0 to take first camera available.
+    char* pMem = nullptr; // pointer to the memory to be allocated.
+    int memId = 0;        // id of this memory.
 
     // Setup parameters
-    bool auto_exp;        // auto-exposure on/off
+    bool auto_exp;        // auto-exposure on/off.
     int gain;             // percentage of the maximum gain.
-    int aoi_x;            // x-coordinate of AOI in px.
-    int aoi_y;            // y-coordinate of AOI in px.
-    int aoi_w;            // width of the AOI in px.
-    int aoi_h;            // height of the AOI in px.
     double fps;           // fps value to be used.
-    double actual_fps;    // fps value actually set
+    double actual_fps;    // fps value actually set.
 
     /**
      * @brief Loads camera intrinsic parameters from calibration file.

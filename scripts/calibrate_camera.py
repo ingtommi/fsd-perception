@@ -3,11 +3,11 @@ import numpy as np
 import glob
 
 # Define image size, lens, checkerboard dimensions (i.e., number of corners), termination criteria and output path
-IMGSZ = (1920, 1200)
+IMGSZ = (640, 640)
 LENS = "6mm"
 CHECKERBOARD = (6,9)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-OUTPUT = "../config/cameraCalib_{}.yaml".format(LENS)
+OUTPUT = f"../config/cameraCalib_{f"{IMGSZ[0]}x{IMGSZ[1]}"}_{LENS}.yaml"
 
 # Create arrays to store object points and image points from all the images
 objpoints = [] # 3d point in real world space
@@ -17,7 +17,7 @@ imgpoints = [] # 2d points in image plane.
 objp = np.zeros((1, CHECKERBOARD[0]*CHECKERBOARD[1], 3), np.float32) # (batch, points, coordinates)
 objp[0,:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2) # (0,0,0), (1,0,0), ... | z fixed to 0
 
-images = glob.glob("../media/calib/{}/*.png".format(LENS))
+images = glob.glob(f"../media/calib/{f"{IMGSZ[0]}x{IMGSZ[1]}"}/{LENS}/*.png")
 for fname in images:
   img = cv2.imread(fname)
   gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -33,7 +33,7 @@ for fname in images:
     # Draw and display the corners
     img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
 
-    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    cv2.namedWindow('img', cv2.WINDOW_NORMAL) # for 1920x1200
     cv2.imshow('img', img)
     cv2.waitKey(0)
 
@@ -43,8 +43,8 @@ cv2.destroyAllWindows()
 # and corresponding pixel coordinates of the detected corners (imgpoints)
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
-# Refine camera matrix using alpha=1 to retain all pixels
-newMtx, _ = cv2.getOptimalNewCameraMatrix(mtx, dist, IMGSZ, 1, IMGSZ)
+# Refine camera matrix using alpha=0
+newMtx, _ = cv2.getOptimalNewCameraMatrix(mtx, dist, IMGSZ, 0, IMGSZ)
 
 # Compute re-projection error
 mean_error = 0

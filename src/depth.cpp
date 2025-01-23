@@ -25,7 +25,7 @@ Estimator::Estimator(const double& fx, const double& fy, const double& cx, const
 
 // Compute and return object positions
 // This function makes use of macros defined in 'timing.hpp' for benchmarking purpose. Inactive by default.
-const vector<Estimator::Position>& Estimator::computePosition(const vector<YOLO::Object>& detections, const int& frameWidth) noexcept {
+const vector<Estimator::Position>& Estimator::computePosition(const vector<YOLO::Object>& detections) noexcept {
   
   INIT_TIMER_DEPTH
   START_TIMER
@@ -35,7 +35,7 @@ const vector<Estimator::Position>& Estimator::computePosition(const vector<YOLO:
   for (const YOLO::Object& detection : detections) {
     
     // Check detection validity
-    if (!isValidDetection(detection, frameWidth)) { 
+    if (!isValidDetection(detection)) { 
       continue; // skip invalid detections
     }
     // Get data
@@ -52,7 +52,7 @@ const vector<Estimator::Position>& Estimator::computePosition(const vector<YOLO:
     // Compute z by using Pythagora
     double z = sqrt(pow(d_ground, 2) - pow(x, 2));
 
-    this->positions.emplace_back(x, z);
+    this->positions.emplace_back(d_ground, x, z);
   }
   END_TIMER_DEPTH
   LOG_TIMER_DEPTH
@@ -61,7 +61,7 @@ const vector<Estimator::Position>& Estimator::computePosition(const vector<YOLO:
 }
 
 // Check detection validity
-bool Estimator::isValidDetection(const YOLO::Object& detection, const int& frameWidth) noexcept {
+bool Estimator::isValidDetection(const YOLO::Object& detection) noexcept {
 
   // Criteria 1: Cone too far away
   const double thres = (detection.label == 3) ? this->largeThres : this->smallThres;
@@ -70,10 +70,6 @@ bool Estimator::isValidDetection(const YOLO::Object& detection, const int& frame
   }
   // Criteria 2: Fallen cone
   if (detection.bbox.width > detection.bbox.height) {
-    return false;
-  }
-  // Criteria 3: Bounding box at the border (-> cone might be partially visible)
-  if (detection.bbox.x <= 0 || detection.bbox.x + detection.bbox.width >= frameWidth) {
     return false;
   }
   return true;
@@ -90,9 +86,6 @@ bool Estimator::setGeometry(const string& configPath) noexcept {
 
     if (!config["largeConeHeight"]) return false;
     this->largeHeight = config["largeConeHeight"].as<float>(0.505);
-
-    //if (!config["coneDiameter"]) return false;
-    //this->diameter = config["coneDiameter"].as<float>(0.285);
 
     if (!config["cameraHeight"]) return false;
     this->cameraHeight = config["cameraHeight"].as<float>(1.5);

@@ -1,7 +1,6 @@
 # Cones geometry, in meters (from FS rules)
-smallConeHeight: 0.325
-largeConeHeight: 0.505
-coneDiameter: 0.285
+smallConeHeight: 0.35 #0.325
+largeConeHeight: 0.35 #0.505
 
 # Camera position, in meters
 cameraHeight: 1.5

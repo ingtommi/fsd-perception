@@ -13,21 +13,23 @@
 class Estimator {
   public:
     /**
-     * @brief Structure to hold position estimates.
+     * @brief Struct to hold position estimates.
      *
-     * This structure holds the estimated x and y coordinates of objects.
+     * This struct holds the estimated x and y coordinates of objects.
      */
     struct Position {
+      const double dist;
       const double x;
       const double z;
 
       /**
        * @brief Constructs a Position object.
-       * 
+       *
+       * @param dist Distance of the object.
        * @param x x-coordinate of the object.
        * @param z z-coordinate of the object.
        */
-      Position(double& x, double& z) : x(x), z(z) {}
+      Position(double& dist, double& x, double& z) : dist(dist), x(x), z(z) {}
     };
 
     /**
@@ -45,12 +47,11 @@ class Estimator {
      * @brief Compute and return the positions of cones related to the camera.
      * 
      * @param detections Vector of detected objects.
-     * @param frameWidth Width of the frame.
      * @return Reference to vector of estimated positions.
      */
-    const std::vector<Position>& computePosition(const std::vector<YOLO::Object>& detections, const int& frameWidth) noexcept;
+    const std::vector<Position>& computePosition(const std::vector<YOLO::Object>& detections) noexcept;
 
-  private:
+  private:    
     // Camera parameters
     double fx;                 // Focal length of the camera along x-axis in px.
     double fy;                 // Focal length of the camera along y-axis in px.
@@ -60,7 +61,6 @@ class Estimator {
     // Geometry
     float smallHeight;         // Height in meters of the large orange cones, from FS rules.
     float largeHeight;         // Height in meters of the yellow, blue and small orange cones, from FS rules.
-    //float diameter;            // Diameter in meters of all cones, from FS rules.
     float cameraHeight;        // Height in meters of the camera from ground.
     float maxDistance;         // Max distance in meters to consider a cone.
 
@@ -74,13 +74,12 @@ class Estimator {
      * @brief Checks whether a YOLO detection is to be used for distance estimation.
      * 
      * Out of all the detections, some must be discarded because the object may have fallen, 
-     * not entirely visible or simply too far away to be of interest in the current frame.
+     * or it is too far away to be of interest in the current frame.
      * 
      * @param detection Detected object.
-     * @param frameWidth Width of the frame.
      * @return True if the detection is to be used, False otherwise.
      */
-    bool isValidDetection(const YOLO::Object& detection, const int& frameWidth) noexcept;
+    bool isValidDetection(const YOLO::Object& detection) noexcept;
 
     /**
      * @brief Loads object geometry from config path.

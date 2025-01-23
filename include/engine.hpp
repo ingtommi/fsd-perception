@@ -40,13 +40,13 @@ class Logger : public nvinfer1::ILogger {
 class YOLO {
   public:
     /**
-     * @brief Structure to hold detection results.
+     * @brief Struct to hold detection results.
      * 
-     * This structure holds the bounding box, confidence score, and label of a detection result.
+     * This struct holds the bounding box, confidence score, and label of a detection result.
      */
     struct Object {
       const cv::Rect bbox; // Bounding box of the detected object.
-      const int label;     // label of the detected object.
+      const int label;     // Label of the detected object.
       const float conf;    // Confidence score of the detection.
 
       /**
@@ -58,7 +58,7 @@ class YOLO {
        */
       Object(const cv::Rect& bbox, const int& label, const float& conf) : bbox(bbox), label(label), conf(conf) {}
     };
-    
+
     /**
      * @brief Constructs a YOLO object from config file path.
      * 
