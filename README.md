@@ -12,7 +12,7 @@ It is a gift to Polimarche Racing Team :racing_car:. I would love to see further
 
 ## Idea
 
-To estimate depth with a **single monocular camera** (a choice made to reduce cost and complexity...), the idea is to leverage a priori information about cone geometry and use to invert the pinhole camera equations, as shown in the figure below. Object detection is done before and provides the height of the cones in the image plane.
+To estimate depth with a **single monocular camera** (a choice made to reduce cost and complexity...), the idea is to leverage a priori information about cone geometry and use it to invert the pinhole camera equations, as shown in the figure below. Object detection is done before and provides the height of the cones in the image plane.
 
 NOTE: This is only possible with a calibrated camera!
 
@@ -23,11 +23,20 @@ NOTE: This is only possible with a calibrated camera!
 - IDS uEye UI-3160CP-C-HQ Rev. 2.1
 - NVIDIA Jetson Orin Nano Developer Kit
 
-## Usage
+## Setup and Usage
+
+First, download the code by typing:
 
 ```
 git clone https://github.com/ingtommi/fsd-perception
 cd fsd-perception
+```
+
+At this point, configure the application as you want by writing in the YAML config files under `config/`. Make sure that `cameraCalib.yaml` contains the parameters corresponding to the current camera.
+
+Then, build the system with:
+
+```
 mkdir build
 cd build
 ```
