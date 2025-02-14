@@ -51,4 +51,4 @@ make
 ./perception
 ```
 
-If instead the **benchmarking** mode is required, compile with `cmake .. -DBENCHMARK=ON` for **overall** benchmarking (i.e., end-to-end latency and fps) and `cmake .. -DBENCHMARK=ON -DDETAIL=ON` for **detailed** benchmarking (i.e., latency of single sub-modules). 
+If instead the **benchmarking** mode is required, compile with `cmake .. -DBENCHMARK=ON` for **overall** benchmarking (i.e., end-to-end latency and fps) and `cmake .. -DBENCHMARK=ON -DDETAIL=ON` for **detailed** benchmarking (i.e., latency of single sub-modules).
