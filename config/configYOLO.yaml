@@ -1,7 +1,7 @@
 # Fixed options: image_size = 640, batch_size = 1
 
 # Inference options
-model_path: /home/jetson/inference/models/yolo10s_no_unk-int8.engine
+model_path: ../models/model.engine
 model_type: YOLOv10                                          # [YOLOv5, YOLOv8, YOLOv10, YOLOv11]
 conf_thres: 0.5                                              # [0.001 - 1]
 iou_thres: 0.7                                               # [0.001 - 1]

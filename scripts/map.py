@@ -57,7 +57,6 @@ plt.axvline(0, color='black', linewidth=0.5)  # Camera center
 plt.xlabel("Lateral Distance (m)")
 plt.ylabel("Forward Distance (m)")
 plt.title("Bird's-Eye View Map")
-plt.legend()
+plt.legend(fontsize=12)
 plt.grid(True)
-
 plt.show()

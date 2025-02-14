@@ -1,9 +1,9 @@
 # Cones geometry, in meters (from FS rules)
-smallConeHeight: 0.35 #0.325
-largeConeHeight: 0.35 #0.505
+smallConeHeight: 0.325 #0.35 if using current orange cones in garage
+largeConeHeight: 0.505
 
 # Camera position, in meters
-cameraHeight: 1.5
+cameraHeight: 1.5 # change with real camera height
 
 # Maximum accepted distance to consider cone, in meters
 maxDistance: 15

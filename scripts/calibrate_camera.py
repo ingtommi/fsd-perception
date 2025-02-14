@@ -3,7 +3,7 @@ import numpy as np
 import glob
 
 # Define image size, lens, checkerboard dimensions (i.e., number of corners), termination criteria and output path
-IMGSZ = (640, 640)
+IMGSZ = (1920, 1200)
 LENS = "6mm"
 CHECKERBOARD = (6,9)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
